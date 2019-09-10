@@ -48,7 +48,7 @@ def does_image_exist(container_image):
     run_cmd(cmd, print_output=False)
 
 
-def podman_run_cmd(container_image, cmd, log_stderr=True, return_output=False):
+def podman_run_cmd(container_image, cmd, entrypoint=None, log_stderr=True, return_output=False):
     """
     run provided command in selected container image using podman; raise exc when command fails
 
@@ -58,8 +58,12 @@ def podman_run_cmd(container_image, cmd, log_stderr=True, return_output=False):
     :param return_output: bool, if True, return output of the command
     :return: stdout output
     """
-    return run_cmd(["podman", "run", "--rm", container_image] + cmd,
-                   return_output=return_output, log_stderr=log_stderr)
+    if entrypoint is None:
+        return run_cmd(["podman", "run", "--rm", container_image] + cmd,
+               return_output=return_output, log_stderr=log_stderr)
+    else:
+        return run_cmd(["podman", "run", "--entrypoint", entrypoint, "--rm", container_image] + cmd,
+               return_output=return_output, log_stderr=log_stderr)
 
 
 def create_buildah_container(container_image, container_name, build_volumes=None, extra_from_args=None, debug=False):
@@ -304,7 +308,11 @@ class BuildahBuilder(Builder):
         for i in self.python_interpr_prio:
             cmd = ["ls", i]
             try:
-                run_cmd(["podman", "run", "--rm", self.build.base_image] + cmd,
+                if self.build.build_entrypoint is None:
+                    run_cmd(["podman", "run", "--rm", self.build.base_image] + cmd,
+                        log_stderr=False, log_output=True)
+                else:
+                    run_cmd(["podman", "run", "--entrypoint", self.build.build_entrypoint, "--rm", self.build.base_image] + cmd,
                         log_stderr=False, log_output=True)
             except subprocess.CalledProcessError:
                 logger.info("python interpreter %s does not exist", i)
@@ -338,4 +346,4 @@ class BuildahBuilder(Builder):
         check that containers can be created
         """
         logger.debug("trying to create a dummy container using podman")
-        podman_run_cmd(self.build.base_image, ["true"], log_stderr=True)
+        podman_run_cmd(self.build.base_image, ["true"], self.build.build_entrypoint, log_stderr=True)
