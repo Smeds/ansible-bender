@@ -189,6 +189,11 @@ class CLI:
             description="Build image within an openshift environment.",
             help="Build image within an openshift environment."
         )
+        self.build_parser.add_argument(
+            "--podman-entrypoint",
+            default=None,
+            help="Used during build of a container to prevent podman get stuck witch containers that are running forever"
+        )
         self.bio_parser.set_defaults(subcommand="bio")
 
     def _do_get_logs_interface(self):
@@ -330,6 +335,7 @@ class CLI:
             build.ansible_extra_args = self.args.extra_ansible_args
         if self.args.python_interpreter:
             build.python_interpreter = self.args.python_interpreter
+        build.build_entrypoint = self.args.podman_entrypoint
 
         self.app.build(build)
 
